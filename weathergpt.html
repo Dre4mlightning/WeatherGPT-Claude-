@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WeatherGPT — Ask the sky anything</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0a1721;
+    --panel:#0f2438;
+    --panel-2:#153150;
+    --panel-3:#1b3c5f;
+    --mist:#c3d3e2;
+    --mist-dim:#7f95a9;
+    --paper:#eef4f8;
+    --rain:#49dcc9;
+    --rain-dim:#2c8479;
+    --amber:#ffb648;
+    --alert:#ff6f5e;
+    --line: rgba(201,214,227,0.14);
+    --line-strong: rgba(201,214,227,0.28);
+    --radius: 14px;
+    --font-display:'IBM Plex Sans',system-ui,sans-serif;
+    --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at 20% -10%, #123049 0%, transparent 55%),
+      radial-gradient(ellipse at 90% 0%, #0d2740 0%, transparent 45%),
+      var(--ink);
+    color:var(--mist);
+    font-family:var(--font-display);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  a{color:inherit;}
+  ::selection{background:var(--rain);color:var(--ink);}
+  :focus-visible{outline:2px solid var(--rain);outline-offset:2px;}
+
+  /* ---------- header ---------- */
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:22px clamp(20px,5vw,56px);
+    border-bottom:1px solid var(--line);
+    position:relative;z-index:5;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand-mark{
+    width:30px;height:30px;border-radius:8px;
+    background:linear-gradient(135deg,var(--rain),var(--rain-dim));
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .brand-mark svg{width:16px;height:16px;}
+  .brand-name{font-weight:700;font-size:16px;letter-spacing:0.02em;color:var(--paper);}
+  .brand-tag{font-family:var(--font-mono);font-size:10px;color:var(--mist-dim);letter-spacing:0.14em;text-transform:uppercase;margin-top:1px;}
+  .header-right{display:flex;align-items:center;gap:18px;}
+  .eyebrow{
+    font-family:var(--font-mono);font-size:11px;letter-spacing:0.12em;
+    color:var(--mist-dim);text-transform:uppercase;
+    display:flex;align-items:center;gap:8px;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--rain);box-shadow:0 0 0 3px rgba(73,220,201,0.15);}
+  .lang-toggle{
+    display:flex;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:3px;
+  }
+  .lang-toggle button{
+    font-family:var(--font-mono);font-size:11px;letter-spacing:0.06em;
+    background:transparent;border:none;color:var(--mist-dim);
+    padding:6px 12px;border-radius:16px;cursor:pointer;transition:all .2s ease;
+  }
+  .lang-toggle button.active{background:var(--panel-3);color:var(--paper);}
+
+  /* ---------- instrument ticker ---------- */
+  .ticker{
+    border-bottom:1px solid var(--line);
+    background:var(--panel);
+    overflow:hidden;position:relative;
+  }
+  .ticker-inner{
+    display:flex;gap:0;padding:11px clamp(20px,5vw,56px);
+    font-family:var(--font-mono);font-size:12px;color:var(--mist);
+    flex-wrap:wrap;row-gap:6px;
+  }
+  .tick{display:flex;align-items:center;gap:8px;padding:0 18px;border-right:1px solid var(--line);}
+  .tick:last-child{border-right:none;}
+  .tick .k{color:var(--mist-dim);letter-spacing:0.08em;text-transform:uppercase;font-size:10px;}
+  .tick .v{color:var(--paper);font-weight:500;}
+  .tick .v.hot{color:var(--amber);}
+  .tick .v.cool{color:var(--rain);}
+
+  /* ---------- hero ---------- */
+  .hero{
+    position:relative;
+    padding:clamp(48px,8vw,88px) clamp(20px,5vw,56px) clamp(40px,6vw,64px);
+    overflow:hidden;
+  }
+  .hero-isobars{position:absolute;inset:0;z-index:0;opacity:0.55;}
+  .hero-content{position:relative;z-index:1;max-width:760px;}
+  .hero h1{
+    font-size:clamp(38px,6vw,64px);
+    line-height:1.02;
+    letter-spacing:-0.02em;
+    margin:0 0 20px;
+    color:var(--paper);
+    font-weight:700;
+  }
+  .hero h1 em{
+    font-style:normal;
+    background:linear-gradient(90deg,var(--rain),var(--amber));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero p{
+    font-size:clamp(15px,1.6vw,18px);
+    color:var(--mist);
+    max-width:540px;
+    line-height:1.6;
+    margin:0 0 28px;
+  }
+  .hero-stats{display:flex;gap:36px;flex-wrap:wrap;margin-top:8px;}
+  .hstat b{display:block;font-family:var(--font-mono);font-size:22px;color:var(--paper);font-weight:600;}
+  .hstat span{font-size:11px;color:var(--mist-dim);text-transform:uppercase;letter-spacing:0.1em;}
+
+  /* ---------- app grid ---------- */
+  .app{
+    display:grid;
+    grid-template-columns: 1fr 320px;
+    gap:20px;
+    padding:0 clamp(20px,5vw,56px) clamp(48px,6vw,80px);
+    align-items:start;
+  }
+  @media (max-width: 880px){
+    .app{grid-template-columns:1fr;}
+  }
+
+  /* ---------- chat panel ---------- */
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .panel-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 20px;border-bottom:1px solid var(--line);
+  }
+  .panel-head h2{margin:0;font-size:14px;color:var(--paper);font-weight:600;}
+  .panel-head .status{
+    font-family:var(--font-mono);font-size:10px;color:var(--rain);
+    letter-spacing:0.1em;text-transform:uppercase;display:flex;align-items:center;gap:6px;
+  }
+  .panel-head .status .dot{width:6px;height:6px;border-radius:50%;background:var(--rain);animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  @media (prefers-reduced-motion: reduce){
+    .panel-head .status .dot{animation:none;}
+  }
+
+  .chat-log{
+    height:440px;overflow-y:auto;
+    padding:22px 20px;
+    display:flex;flex-direction:column;gap:16px;
+  }
+  .chat-log::-webkit-scrollbar{width:8px;}
+  .chat-log::-webkit-scrollbar-thumb{background:var(--panel-3);border-radius:8px;}
+
+  .msg{max-width:82%;display:flex;flex-direction:column;gap:6px;}
+  .msg.user{align-self:flex-end;align-items:flex-end;}
+  .msg.bot{align-self:flex-start;align-items:flex-start;}
+  .bubble{
+    padding:12px 15px;border-radius:12px;font-size:14px;line-height:1.55;
+  }
+  .msg.user .bubble{background:var(--panel-3);color:var(--paper);border-bottom-right-radius:3px;}
+  .msg.bot .bubble{background:transparent;border:1px solid var(--line-strong);color:var(--mist);border-bottom-left-radius:3px;}
+  .msg.bot .bubble b{color:var(--paper);}
+  .msg-meta{font-family:var(--font-mono);font-size:10px;color:var(--mist-dim);letter-spacing:0.06em;padding:0 4px;}
+  .msg.bot .bubble .src{
+    display:inline-flex;align-items:center;gap:5px;margin-top:9px;
+    font-family:var(--font-mono);font-size:10px;color:var(--rain);
+    text-transform:uppercase;letter-spacing:0.08em;
+  }
+  .msg.bot .bubble .src::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--rain);}
+
+  .typing{display:flex;gap:4px;padding:12px 15px;}
+  .typing span{width:5px;height:5px;border-radius:50%;background:var(--mist-dim);animation:bounce 1.2s infinite;}
+  .typing span:nth-child(2){animation-delay:.15s;}
+  .typing span:nth-child(3){animation-delay:.3s;}
+  @keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.4;}30%{transform:translateY(-4px);opacity:1;}}
+
+  .chips{display:flex;gap:8px;flex-wrap:wrap;padding:0 20px 16px;}
+  .chip{
+    font-family:var(--font-mono);font-size:11.5px;color:var(--mist);
+    background:var(--panel-2);border:1px solid var(--line);
+    padding:7px 12px;border-radius:20px;cursor:pointer;transition:all .15s ease;
+  }
+  .chip:hover{border-color:var(--rain);color:var(--paper);}
+
+  .composer{
+    display:flex;gap:10px;padding:16px 20px;border-top:1px solid var(--line);
+    background:var(--panel);
+  }
+  .composer input{
+    flex:1;background:var(--ink);border:1px solid var(--line-strong);
+    border-radius:10px;padding:12px 14px;color:var(--paper);font-family:var(--font-display);font-size:14px;
+  }
+  .composer input::placeholder{color:var(--mist-dim);}
+  .composer button{
+    background:var(--rain);color:var(--ink);border:none;border-radius:10px;
+    padding:0 20px;font-family:var(--font-display);font-weight:600;font-size:13px;
+    cursor:pointer;transition:filter .15s ease;
+  }
+  .composer button:hover{filter:brightness(1.08);}
+  .composer button:disabled{opacity:.5;cursor:not-allowed;}
+
+  /* ---------- instrument sidebar ---------- */
+  .side{display:flex;flex-direction:column;gap:16px;}
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;
+  }
+  .card h3{
+    margin:0 0 14px;font-size:11px;color:var(--mist-dim);
+    text-transform:uppercase;letter-spacing:0.12em;font-weight:600;
+  }
+  .locrow{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px;}
+  .locrow .city{font-size:19px;color:var(--paper);font-weight:600;}
+  .locrow .code{font-family:var(--font-mono);font-size:11px;color:var(--mist-dim);}
+
+  .dial-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .dial{
+    background:var(--ink);border:1px solid var(--line);border-radius:10px;
+    padding:12px 12px;text-align:left;
+  }
+  .dial .lab{font-family:var(--font-mono);font-size:9.5px;color:var(--mist-dim);text-transform:uppercase;letter-spacing:0.1em;}
+  .dial .val{font-family:var(--font-mono);font-size:20px;color:var(--paper);margin-top:4px;font-weight:600;}
+  .dial .val small{font-size:11px;color:var(--mist-dim);font-weight:400;}
+  .dial.wide{grid-column:1 / -1;display:flex;align-items:center;justify-content:space-between;}
+
+  .condition-row{display:flex;align-items:center;gap:12px;padding:14px;background:var(--ink);border:1px solid var(--line);border-radius:10px;margin-top:12px;}
+  .condition-row svg{width:34px;height:34px;flex-shrink:0;}
+  .condition-row .desc{font-size:14px;color:var(--paper);font-weight:500;}
+  .condition-row .sub{font-family:var(--font-mono);font-size:10.5px;color:var(--mist-dim);margin-top:2px;}
+
+  .about-card p{font-size:12.5px;line-height:1.65;color:var(--mist-dim);margin:0 0 10px;}
+  .about-card p:last-child{margin-bottom:0;}
+  .about-card b{color:var(--mist);}
+
+  footer{
+    border-top:1px solid var(--line);
+    padding:22px clamp(20px,5vw,56px) 40px;
+    font-family:var(--font-mono);font-size:11px;color:var(--mist-dim);
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 15a5 5 0 0 1 1-9.9A6 6 0 0 1 17 8a4.5 4.5 0 0 1-.5 9H6a4 4 0 0 1-2-2Z" stroke="#0a1721" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div>
+      <div class="brand-name">WeatherGPT</div>
+      <div class="brand-tag">Conversational climate &amp; alert assistant</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="eyebrow"><span class="dot"></span> SIH26068 · Mission Mausam prototype</div>
+    <div class="lang-toggle" id="langToggle">
+      <button class="active" data-lang="en">EN</button>
+      <button data-lang="hi">हि</button>
+    </div>
+  </div>
+</header>
+
+<div class="ticker">
+  <div class="ticker-inner" id="tickerRow">
+    <div class="tick"><span class="k">Station</span><span class="v" id="tkCity">—</span></div>
+    <div class="tick"><span class="k">Temp</span><span class="v hot" id="tkTemp">— °C</span></div>
+    <div class="tick"><span class="k">Pressure</span><span class="v" id="tkPress">— hPa</span></div>
+    <div class="tick"><span class="k">Wind</span><span class="v" id="tkWind">—</span></div>
+    <div class="tick"><span class="k">Humidity</span><span class="v cool" id="tkHum">—%</span></div>
+    <div class="tick"><span class="k">Updated</span><span class="v" id="tkTime">—</span></div>
+  </div>
+</div>
+
+<div id="statusBanner" style="display:none;align-items:center;gap:10px;padding:10px clamp(20px,5vw,56px);background:rgba(255,182,72,0.1);border-bottom:1px solid rgba(255,182,72,0.3);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--amber);">
+  <span style="width:6px;height:6px;border-radius:50%;background:var(--amber);flex-shrink:0;"></span>
+  <span id="statusBannerText">Live data unavailable — showing offline demo data instead.</span>
+</div>
+
+<section class="hero">
+  <svg class="hero-isobars" viewBox="0 0 1200 260" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0,40 C 200,10 400,70 600,40 S 1000,10 1200,40" stroke="#49dcc9" stroke-opacity="0.18" stroke-width="1.5" fill="none"/>
+    <path d="M0,90 C 200,60 400,120 600,90 S 1000,60 1200,90" stroke="#49dcc9" stroke-opacity="0.14" stroke-width="1.5" fill="none"/>
+    <path d="M0,140 C 200,110 400,170 600,140 S 1000,110 1200,140" stroke="#ffb648" stroke-opacity="0.12" stroke-width="1.5" fill="none"/>
+    <path d="M0,190 C 200,160 400,220 600,190 S 1000,160 1200,190" stroke="#49dcc9" stroke-opacity="0.10" stroke-width="1.5" fill="none"/>
+    <path d="M0,235 C 200,205 400,260 600,235 S 1000,205 1200,235" stroke="#49dcc9" stroke-opacity="0.08" stroke-width="1.5" fill="none"/>
+  </svg>
+  <div class="hero-content">
+    <h1 data-i18n="heroTitle">Ask the sky <em>anything.</em></h1>
+    <p data-i18n="heroSub">One conversational layer over live forecasts, nowcasts and hazard alerts — in plain language, in your language, before the weather makes the decision for you.</p>
+    <div class="hero-stats">
+      <div class="hstat"><b>28+</b><span data-i18n="statLang">Languages planned</span></div>
+      <div class="hstat"><b>&lt;3s</b><span data-i18n="statResp">Alert response time</span></div>
+      <div class="hstat"><b>SMS/IVR</b><span data-i18n="statOffline">Low-bandwidth fallback</span></div>
+    </div>
+  </div>
+</section>
+
+<main class="app">
+  <div class="panel">
+    <div class="panel-head">
+      <h2 data-i18n="chatTitle">Ask WeatherGPT</h2>
+      <div class="status"><span class="dot"></span><span data-i18n="statusLive">Live data</span></div>
+    </div>
+    <div class="chat-log" id="chatLog"></div>
+    <div class="chips" id="chips"></div>
+    <form class="composer" id="composer">
+      <input id="userInput" type="text" autocomplete="off" data-i18n-placeholder="composerPlaceholder" placeholder="Try: will it rain in Kochi tomorrow?" />
+      <button type="submit" id="sendBtn" data-i18n="send">Ask</button>
+    </form>
+  </div>
+
+  <aside class="side">
+    <div class="card">
+      <h3 data-i18n="instrumentTitle">Live instrument panel</h3>
+      <div class="locrow">
+        <span class="city" id="sideCity">Delhi</span>
+        <span class="code" id="sideCoord">28.61°N 77.21°E</span>
+      </div>
+      <div class="dial-grid">
+        <div class="dial"><div class="lab" data-i18n="dTemp">Temperature</div><div class="val" id="dTemp">—</div></div>
+        <div class="dial"><div class="lab" data-i18n="dFeels">Feels like</div><div class="val" id="dFeels">—</div></div>
+        <div class="dial"><div class="lab" data-i18n="dHum">Humidity</div><div class="val" id="dHum">—</div></div>
+        <div class="dial"><div class="lab" data-i18n="dWind">Wind</div><div class="val" id="dWind">—</div></div>
+        <div class="dial wide"><div><div class="lab" data-i18n="dPress">Surface pressure</div><div class="val" id="dPress">—</div></div></div>
+      </div>
+      <div class="condition-row">
+        <svg id="condIcon" viewBox="0 0 48 48" fill="none"></svg>
+        <div>
+          <div class="desc" id="condDesc" data-i18n="loading">Reading instruments…</div>
+          <div class="sub" id="condSub">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card about-card">
+      <h3 data-i18n="aboutTitle">About this prototype</h3>
+      <p data-i18n="aboutP1"><b>WeatherGPT</b> is a SIH2026 concept build for PS SIH26068 (Ministry of Earth Sciences). This demo runs on open public weather data to show the conversational layer end-to-end.</p>
+      <p data-i18n="aboutP2">A production deployment would replace this data layer with live <b>IMD, Mausam, Meghdoot and Damini</b> feeds, plus an LLM grounded via retrieval so every figure it states is sourced and verifiable.</p>
+    </div>
+  </aside>
+</main>
+
+<footer>
+  <span>WeatherGPT — SIH26068 concept prototype · Not an official IMD/MoES product</span>
+  <span id="footTime">—</span>
+</footer>
+
+<script>
+(function(){
+
+  /* ---------------- i18n ---------------- */
+  const STRINGS = {
+    en: {
+      heroTitle:'Ask the sky <em>anything.</em>',
+      heroSub:'One conversational layer over live forecasts, nowcasts and hazard alerts — in plain language, in your language, before the weather makes the decision for you.',
+      statLang:'Languages planned', statResp:'Alert response time', statOffline:'Low-bandwidth fallback',
+      chatTitle:'Ask WeatherGPT', statusLive:'Live data', statusOffline:'Demo data (offline)',
+      composerPlaceholder:'Try: will it rain in Kochi tomorrow?', send:'Ask',
+      instrumentTitle:'Live instrument panel',
+      dTemp:'Temperature', dFeels:'Feels like', dHum:'Humidity', dWind:'Wind', dPress:'Surface pressure',
+      loading:'Reading instruments…',
+      aboutTitle:'About this prototype',
+      aboutP1:'<b>WeatherGPT</b> is a SIH2026 concept build for PS SIH26068 (Ministry of Earth Sciences). This demo runs on open public weather data to show the conversational layer end-to-end.',
+      aboutP2:'A production deployment would replace this data layer with live <b>IMD, Mausam, Meghdoot and Damini</b> feeds, plus an LLM grounded via retrieval so every figure it states is sourced and verifiable.',
+      greet:"Namaste! I'm WeatherGPT. Ask me about rain, temperature, wind, humidity or air quality for any city — try one of the chips below or type your own question.",
+      chips:['Will it rain in Mumbai tomorrow?','What\'s the AQI in Delhi right now?','Wind speed in Chennai today','Is it safe to fish off Kochi today?','Temperature in Shimla this week']
+    },
+    hi: {
+      heroTitle:'आसमान से <em>कुछ भी पूछिए।</em>',
+      heroSub:'लाइव पूर्वानुमान, नाउकास्ट और खतरे की चेतावनियों पर एक संवादात्मक परत — सरल भाषा में, आपकी भाषा में, मौसम के फैसला लेने से पहले।',
+      statLang:'योजनाबद्ध भाषाएँ', statResp:'चेतावनी प्रतिक्रिया समय', statOffline:'लो-बैंडविड्थ फॉलबैक',
+      chatTitle:'WeatherGPT से पूछें', statusLive:'लाइव डेटा', statusOffline:'डेमो डेटा (ऑफ़लाइन)',
+      composerPlaceholder:'जैसे: क्या कल कोच्चि में बारिश होगी?', send:'पूछें',
+      instrumentTitle:'लाइव इंस्ट्रूमेंट पैनल',
+      dTemp:'तापमान', dFeels:'महसूस हो रहा', dHum:'नमी', dWind:'हवा', dPress:'सतही दबाव',
+      loading:'उपकरण पढ़े जा रहे हैं…',
+      aboutTitle:'इस प्रोटोटाइप के बारे में',
+      aboutP1:'<b>WeatherGPT</b>, PS SIH26068 (पृथ्वी विज्ञान मंत्रालय) के लिए एक SIH2026 कॉन्सेप्ट है। यह डेमो संवादात्मक परत दिखाने के लिए खुले सार्वजनिक मौसम डेटा पर चलता है।',
+      aboutP2:'उत्पादन संस्करण में यह डेटा परत लाइव <b>IMD, मौसम, मेघदूत और दामिनी</b> फीड से बदली जाएगी, साथ ही एक ऐसा LLM जो रिट्रीवल से जुड़ा हो ताकि हर आँकड़ा स्रोत-सत्यापित हो।',
+      greet:'नमस्ते! मैं WeatherGPT हूं। किसी भी शहर की बारिश, तापमान, हवा, नमी या वायु गुणवत्ता के बारे में पूछें — नीचे दिए गए सुझाव आज़माएं या अपना सवाल टाइप करें।',
+      chips:['क्या कल मुंबई में बारिश होगी?','दिल्ली में अभी AQI क्या है?','आज चेन्नई में हवा की गति कैसी है?','आज कोच्चि के पास मछली पकड़ना सुरक्षित है?','शिमला में इस हफ्ते तापमान कैसा रहेगा?']
+    }
+  };
+  let lang = 'en';
+
+  function applyI18n(){
+    const t = STRINGS[lang];
+    document.querySelectorAll('[data-i18n]').forEach(el=>{
+      const key = el.getAttribute('data-i18n');
+      if(t[key] !== undefined) el.innerHTML = t[key];
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{
+      const key = el.getAttribute('data-i18n-placeholder');
+      if(t[key] !== undefined) el.setAttribute('placeholder', t[key]);
+    });
+    document.getElementById('chips').innerHTML = '';
+    t.chips.forEach(c=>{
+      const b = document.createElement('button');
+      b.type='button'; b.className='chip'; b.textContent=c;
+      b.addEventListener('click', ()=>{ document.getElementById('userInput').value = c; handleAsk(); });
+      document.getElementById('chips').appendChild(b);
+    });
+    // the generic loop above resets the status label to its "live" default text;
+    // re-apply the actual connectivity state on top of it.
+    setLiveStatus(liveMode);
+  }
+
+  document.getElementById('langToggle').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-lang]');
+    if(!btn) return;
+    lang = btn.getAttribute('data-lang');
+    document.querySelectorAll('#langToggle button').forEach(b=>b.classList.toggle('active', b===btn));
+    applyI18n();
+  });
+
+  /* ---------------- weather icons ---------------- */
+  function iconSVG(code){
+    const stroke = '#eef4f8';
+    const accent = '#49dcc9';
+    const sun = `<circle cx="24" cy="24" r="9" stroke="${'#ffb648'}" stroke-width="2"/><g stroke="${'#ffb648'}" stroke-width="2" stroke-linecap="round"><path d="M24 4v5M24 39v5M4 24h5M39 24h5M9 9l3.5 3.5M35.5 35.5L39 39M39 9l-3.5 3.5M12.5 35.5L9 39"/></g>`;
+    const cloud = `<path d="M14 32a7 7 0 1 1 1.4-13.86A9 9 0 0 1 33 21a6 6 0 0 1-1 11.9H14Z" stroke="${stroke}" stroke-width="2" stroke-linejoin="round"/>`;
+    const rain = cloud + `<g stroke="${accent}" stroke-width="2" stroke-linecap="round"><path d="M17 37l-2 4M25 37l-2 4M33 37l-2 4"/></g>`;
+    const storm = cloud + `<path d="M23 34l-4 7h5l-3 6 8-9h-5l3-4z" fill="${'#ffb648'}" stroke="${'#ffb648'}" stroke-width="1"/>`;
+    const fog = `<g stroke="${stroke}" stroke-width="2" stroke-linecap="round"><path d="M8 20h32M6 27h36M10 34h28"/></g>`;
+    const snow = cloud + `<g stroke="${accent}" stroke-width="2" stroke-linecap="round"><path d="M17 36v6M17 39l-3 2M17 39l3 2M25 36v6M25 39l-3 2M25 39l3 2M33 36v6M33 39l-3 2M33 39l3 2"/></g>`;
+    if(code===0) return sun;
+    if(code>=1 && code<=3) return cloud;
+    if(code===45||code===48) return fog;
+    if((code>=51&&code<=67)||(code>=80&&code<=82)) return rain;
+    if(code>=71&&code<=77) return snow;
+    if(code>=95) return storm;
+    return cloud;
+  }
+  const WMO_DESC = {
+    0:'Clear sky',1:'Mostly clear',2:'Partly cloudy',3:'Overcast',
+    45:'Fog',48:'Depositing rime fog',
+    51:'Light drizzle',53:'Moderate drizzle',55:'Dense drizzle',
+    61:'Slight rain',63:'Moderate rain',65:'Heavy rain',
+    66:'Light freezing rain',67:'Heavy freezing rain',
+    71:'Slight snow',73:'Moderate snow',75:'Heavy snow',77:'Snow grains',
+    80:'Slight rain showers',81:'Moderate rain showers',82:'Violent rain showers',
+    95:'Thunderstorm',96:'Thunderstorm, slight hail',99:'Thunderstorm, heavy hail'
+  };
+  const WMO_DESC_HI = {
+    0:'साफ आसमान',1:'ज़्यादातर साफ',2:'आंशिक बादल',3:'घने बादल',
+    45:'धुंध',48:'पाला जमी धुंध',
+    51:'हल्की बूंदाबांदी',53:'मध्यम बूंदाबांदी',55:'घनी बूंदाबांदी',
+    61:'हल्की बारिश',63:'मध्यम बारिश',65:'भारी बारिश',
+    66:'हल्की जमने वाली बारिश',67:'भारी जमने वाली बारिश',
+    71:'हल्की बर्फबारी',73:'मध्यम बर्फबारी',75:'भारी बर्फबारी',77:'बर्फ के कण',
+    80:'हल्की बौछारें',81:'मध्यम बौछारें',82:'तेज़ बौछारें',
+    95:'आंधी-तूफान',96:'ओलों के साथ आंधी',99:'भारी ओलों के साथ आंधी'
+  };
+
+  function dirLabel(deg){
+    const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+    return dirs[Math.round(deg/45)%8];
+  }
+
+  /* ---------------- data layer (Open-Meteo, with resilient offline fallback) ---------------- */
+  // If the network is blocked (sandboxed preview, offline demo, firewalled network, etc.)
+  // every "live" call below falls back to a deterministic local dataset so the chat
+  // always answers. `liveMode` tracks which source is actually in use, and the UI
+  // reflects it honestly rather than failing silently.
+  const cache = {};
+  let liveMode = true;
+
+  function withTimeout(promise, ms){
+    return Promise.race([
+      promise,
+      new Promise((_, reject)=> setTimeout(()=> reject(new Error('timeout after '+ms+'ms')), ms))
+    ]);
+  }
+
+  // Tries each URL in order (e.g. local backend proxy first, then a direct
+  // browser call to the public API) and returns the first one that succeeds.
+  // This is what lets live data work whether or not server.js is running.
+  async function fetchJsonChain(urls, timeoutMs=6000){
+    let lastErr;
+    for(let i=0;i<urls.length;i++){
+      try{
+        const res = await withTimeout(fetch(urls[i]), timeoutMs);
+        if(!res.ok) throw new Error('HTTP ' + res.status + ' from ' + urls[i]);
+        const json = await res.json();
+        return { json, viaProxy: i === 0 && urls[i].startsWith('/api/') };
+      }catch(err){
+        lastErr = err;
+        console.warn('Fetch attempt failed:', urls[i], '→', err.message);
+      }
+    }
+    throw lastErr || new Error('all fetch attempts failed');
+  }
+
+  function hashCode(str){
+    let h = 0;
+    for(let i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) | 0; }
+    return Math.abs(h);
+  }
+
+  // Approximate real climatology for major Indian cities, used only when the
+  // live API is unreachable. Values drift slightly per hour so it still feels alive.
+  const FALLBACK_DB = {
+    delhi:       {admin:'Delhi',          lat:28.61, lon:77.21, temp:31, hum:52, wind:11, dir:280, press:1006, code:1},
+    mumbai:      {admin:'Maharashtra',    lat:19.08, lon:72.88, temp:29, hum:78, wind:18, dir:250, press:1008, code:61},
+    chennai:     {admin:'Tamil Nadu',     lat:13.08, lon:80.27, temp:33, hum:70, wind:14, dir:100, press:1007, code:2},
+    kolkata:     {admin:'West Bengal',    lat:22.57, lon:88.36, temp:32, hum:74, wind:10, dir:190, press:1006, code:3},
+    bengaluru:   {admin:'Karnataka',      lat:12.97, lon:77.59, temp:24, hum:65, wind:9,  dir:230, press:1013, code:2},
+    bangalore:   {admin:'Karnataka',      lat:12.97, lon:77.59, temp:24, hum:65, wind:9,  dir:230, press:1013, code:2},
+    hyderabad:   {admin:'Telangana',      lat:17.38, lon:78.49, temp:28, hum:58, wind:12, dir:220, press:1010, code:1},
+    pune:        {admin:'Maharashtra',    lat:18.52, lon:73.86, temp:25, hum:68, wind:15, dir:260, press:1012, code:61},
+    ahmedabad:   {admin:'Gujarat',        lat:23.02, lon:72.57, temp:34, hum:44, wind:13, dir:270, press:1005, code:0},
+    jaipur:      {admin:'Rajasthan',      lat:26.91, lon:75.79, temp:33, hum:38, wind:10, dir:290, press:1004, code:1},
+    lucknow:     {admin:'Uttar Pradesh',  lat:26.85, lon:80.95, temp:30, hum:56, wind:8,  dir:180, press:1005, code:2},
+    kochi:       {admin:'Kerala',         lat:9.93,  lon:76.27, temp:28, hum:83, wind:16, dir:240, press:1009, code:80},
+    cochin:      {admin:'Kerala',         lat:9.93,  lon:76.27, temp:28, hum:83, wind:16, dir:240, press:1009, code:80},
+    shimla:      {admin:'Himachal Pradesh',lat:31.10,lon:77.17, temp:18, hum:60, wind:7,  dir:300, press:900,  code:3},
+    patna:       {admin:'Bihar',          lat:25.59, lon:85.14, temp:31, hum:60, wind:9,  dir:170, press:1005, code:2},
+    bhopal:      {admin:'Madhya Pradesh', lat:23.26, lon:77.41, temp:29, hum:54, wind:11, dir:250, press:1008, code:1},
+    guwahati:    {admin:'Assam',          lat:26.14, lon:91.74, temp:29, hum:80, wind:8,  dir:150, press:1004, code:80},
+    chandigarh:  {admin:'Chandigarh',     lat:30.73, lon:76.78, temp:29, hum:50, wind:10, dir:280, press:1006, code:1},
+    srinagar:    {admin:'Jammu and Kashmir',lat:34.08,lon:74.79,temp:14, hum:55, wind:6,  dir:310, press:900,  code:2},
+    goa:         {admin:'Goa',            lat:15.30, lon:74.12, temp:29, hum:82, wind:17, dir:250, press:1009, code:80},
+    panaji:      {admin:'Goa',            lat:15.49, lon:73.83, temp:29, hum:82, wind:17, dir:250, press:1009, code:80},
+    varanasi:    {admin:'Uttar Pradesh',  lat:25.32, lon:83.01, temp:31, hum:58, wind:8,  dir:170, press:1005, code:2},
+    indore:      {admin:'Madhya Pradesh', lat:22.72, lon:75.86, temp:28, hum:52, wind:12, dir:260, press:1009, code:1},
+    nagpur:      {admin:'Maharashtra',    lat:21.15, lon:79.09, temp:31, hum:50, wind:10, dir:240, press:1008, code:1},
+    surat:       {admin:'Gujarat',        lat:21.17, lon:72.83, temp:32, hum:60, wind:14, dir:260, press:1007, code:2},
+    visakhapatnam:{admin:'Andhra Pradesh',lat:17.69, lon:83.22, temp:31, hum:72, wind:19, dir:110, press:1007, code:80},
+    vizag:       {admin:'Andhra Pradesh', lat:17.69, lon:83.22, temp:31, hum:72, wind:19, dir:110, press:1007, code:80},
+    coimbatore:  {admin:'Tamil Nadu',     lat:11.02, lon:76.97, temp:27, hum:62, wind:10, dir:230, press:1011, code:2},
+    thiruvananthapuram:{admin:'Kerala',   lat:8.52,  lon:76.94, temp:29, hum:80, wind:14, dir:240, press:1009, code:80},
+    bhubaneswar: {admin:'Odisha',         lat:20.30, lon:85.82, temp:32, hum:70, wind:12, dir:150, press:1006, code:2},
+    ranchi:      {admin:'Jharkhand',      lat:23.34, lon:85.31, temp:27, hum:60, wind:9,  dir:200, press:1007, code:2},
+    raipur:      {admin:'Chhattisgarh',   lat:21.25, lon:81.63, temp:30, hum:56, wind:9,  dir:220, press:1007, code:1},
+    dehradun:    {admin:'Uttarakhand',    lat:30.32, lon:78.03, temp:24, hum:62, wind:7,  dir:290, press:960,  code:3},
+    amritsar:    {admin:'Punjab',         lat:31.63, lon:74.87, temp:30, hum:48, wind:9,  dir:280, press:1005, code:1},
+    agra:        {admin:'Uttar Pradesh',  lat:27.18, lon:78.02, temp:32, hum:48, wind:9,  dir:250, press:1005, code:1},
+    mysuru:      {admin:'Karnataka',      lat:12.30, lon:76.65, temp:25, hum:64, wind:8,  dir:230, press:1013, code:2},
+    mysore:      {admin:'Karnataka',      lat:12.30, lon:76.65, temp:25, hum:64, wind:8,  dir:230, press:1013, code:2},
+    puri:        {admin:'Odisha',         lat:19.80, lon:85.83, temp:30, hum:76, wind:20, dir:100, press:1007, code:80},
+    darjeeling:  {admin:'West Bengal',    lat:27.04, lon:88.26, temp:15, hum:75, wind:6,  dir:310, press:850,  code:45}
+  };
+
+  function fallbackLoc(name){
+    const key = name.toLowerCase();
+    const entry = FALLBACK_DB[key] || FALLBACK_DB['delhi'];
+    return { name: FALLBACK_DB[key] ? capitalize(key) : name, admin: entry.admin, lat: entry.lat, lon: entry.lon, country:'IN', offline:true, _seed: entry };
+  }
+  function capitalize(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+  function fallbackWeather(loc){
+    const e = loc._seed || FALLBACK_DB['delhi'];
+    // deterministic hourly drift so numbers still feel "live" without a network
+    const hourSeed = (hashCode(loc.name) + new Date().getHours()) % 11 - 5; // -5..+5
+    const temp = e.temp + hourSeed * 0.4;
+    const hum = Math.min(97, Math.max(15, e.hum + hourSeed));
+    const wind = Math.max(2, e.wind + (hourSeed % 3));
+    const press = e.press + Math.round(hourSeed * 0.6);
+    const p0 = e.code >= 51 ? 55 + Math.abs(hourSeed)*4 : 15 + Math.abs(hourSeed)*3;
+    const p1 = Math.min(95, p0 + 12);
+    const today = new Date(); const tomorrow = new Date(Date.now()+86400000); const dayAfter = new Date(Date.now()+2*86400000);
+    return {
+      current:{
+        temperature_2m: temp, relative_humidity_2m: Math.round(hum),
+        apparent_temperature: temp + (hum>70?1.5:-0.5), precipitation:0,
+        weather_code: e.code, wind_speed_10m: wind, wind_direction_10m: e.dir,
+        surface_pressure: press
+      },
+      daily:{
+        time:[today.toISOString(), tomorrow.toISOString(), dayAfter.toISOString()],
+        precipitation_probability_max:[p0, p1, Math.max(10,p1-15)],
+        temperature_2m_max:[temp+3, temp+2.5, temp+3.5],
+        temperature_2m_min:[temp-4, temp-3.5, temp-4.5],
+        weather_code:[e.code, e.code, e.code]
+      }
+    };
+  }
+
+  function fallbackAQI(loc){
+    const e = loc._seed || FALLBACK_DB['delhi'];
+    const base = e.hum > 70 ? 60 : 95; // rough coastal-vs-inland heuristic
+    const seed = hashCode(loc.name) % 40;
+    return { current: { us_aqi: base + seed, pm2_5: (base + seed) * 0.42 } };
+  }
+
+  function setLiveStatus(isLive, reason){
+    liveMode = isLive;
+    const dot = document.querySelector('.panel-head .status .dot');
+    const label = document.querySelector('.panel-head .status span:last-child');
+    if(dot && label){
+      if(isLive){
+        dot.style.background = 'var(--rain)';
+        label.textContent = STRINGS[lang].statusLive;
+      } else {
+        dot.style.background = 'var(--amber)';
+        label.textContent = STRINGS[lang].statusOffline;
+      }
+    }
+    const banner = document.getElementById('statusBanner');
+    if(banner){
+      if(isLive){
+        banner.style.display = 'none';
+      } else {
+        banner.style.display = 'flex';
+        document.getElementById('statusBannerText').textContent =
+          (lang==='hi' ? 'लाइव डेटा उपलब्ध नहीं: ' : 'Live data unavailable: ') + (reason || 'unknown error') +
+          (lang==='hi' ? ' — डेमो डेटा दिखाया जा रहा है।' : ' — showing offline demo data instead.');
+      }
+    }
+  }
+
+  async function geocode(name){
+    const key = name.toLowerCase();
+    if(cache[key]) return cache[key];
+    try{
+      const {json:data, viaProxy} = await fetchJsonChain([
+        '/api/geocode?name=' + encodeURIComponent(name),
+        'https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&format=json&name=' + encodeURIComponent(name)
+      ]);
+      if(!data.results || !data.results.length) throw new Error('city not found in geocoder');
+      const r = data.results[0];
+      const loc = { name:r.name, admin:r.admin1||r.country, lat:r.latitude, lon:r.longitude, country:r.country_code, offline:false };
+      cache[key] = loc;
+      setLiveStatus(true, viaProxy ? 'via local backend' : 'direct from browser');
+      return loc;
+    }catch(err){
+      console.warn('Live geocoding unavailable, using offline dataset:', err.message);
+      setLiveStatus(false, err.message);
+      const loc = fallbackLoc(name);
+      cache[key] = loc;
+      return loc;
+    }
+  }
+
+  async function fetchWeather(loc){
+    if(!loc.offline){
+      try{
+        const query = `latitude=${loc.lat}&longitude=${loc.lon}` +
+          `&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure` +
+          `&daily=precipitation_probability_max,temperature_2m_max,temperature_2m_min,weather_code` +
+          `&timezone=auto&forecast_days=3`;
+        const {json, viaProxy} = await fetchJsonChain([
+          '/api/weather?' + query,
+          `https://api.open-meteo.com/v1/forecast?${query}`
+        ]);
+        if(!json.current) throw new Error('malformed forecast response');
+        setLiveStatus(true, viaProxy ? 'via local backend' : 'direct from browser');
+        return json;
+      }catch(err){
+        console.warn('Live forecast unavailable, using offline dataset:', err.message);
+        setLiveStatus(false, err.message);
+        return fallbackWeather(loc);
+      }
+    }
+    return fallbackWeather(loc);
+  }
+
+  async function fetchAQI(loc){
+    if(!loc.offline){
+      try{
+        const query = `latitude=${loc.lat}&longitude=${loc.lon}&current=us_aqi,pm2_5&timezone=auto`;
+        const {json} = await fetchJsonChain([
+          '/api/aqi?' + query,
+          `https://air-quality-api.open-meteo.com/v1/air-quality?${query}`
+        ]);
+        if(!json.current) throw new Error('malformed AQI response');
+        return { data: json, offline:false };
+      }catch(err){
+        console.warn('Live AQI unavailable, using offline dataset:', err.message);
+        return { data: fallbackAQI(loc), offline:true };
+      }
+    }
+    return { data: fallbackAQI(loc), offline:true };
+  }
+
+  /* ---------------- instrument panel ---------------- */
+  async function updateInstrumentPanel(loc, weather){
+    const c = weather.current;
+    document.getElementById('sideCity').textContent = loc.name + (loc.admin ? ', ' + loc.admin : '');
+    document.getElementById('sideCoord').textContent = `${loc.lat.toFixed(2)}°N ${loc.lon.toFixed(2)}°E`;
+    document.getElementById('dTemp').innerHTML = c.temperature_2m.toFixed(1) + '<small> °C</small>';
+    document.getElementById('dFeels').innerHTML = c.apparent_temperature.toFixed(1) + '<small> °C</small>';
+    document.getElementById('dHum').innerHTML = c.relative_humidity_2m + '<small> %</small>';
+    document.getElementById('dWind').innerHTML = c.wind_speed_10m.toFixed(0) + '<small> km/h ' + dirLabel(c.wind_direction_10m) + '</small>';
+    document.getElementById('dPress').innerHTML = c.surface_pressure.toFixed(0) + '<small> hPa</small>';
+
+    const desc = (lang==='hi' ? WMO_DESC_HI : WMO_DESC)[c.weather_code] || 'Weather update';
+    document.getElementById('condDesc').textContent = desc;
+    document.getElementById('condSub').textContent = 'WMO code ' + c.weather_code + ' · updated ' + new Date().toLocaleTimeString();
+    document.getElementById('condIcon').innerHTML = iconSVG(c.weather_code);
+
+    document.getElementById('tkCity').textContent = loc.name.toUpperCase();
+    document.getElementById('tkTemp').textContent = c.temperature_2m.toFixed(1) + ' °C';
+    document.getElementById('tkPress').textContent = c.surface_pressure.toFixed(0) + ' hPa';
+    document.getElementById('tkWind').textContent = c.wind_speed_10m.toFixed(0) + ' km/h ' + dirLabel(c.wind_direction_10m);
+    document.getElementById('tkHum').textContent = c.relative_humidity_2m + '%';
+    const now = new Date();
+    document.getElementById('tkTime').textContent = now.toLocaleTimeString();
+    document.getElementById('footTime').textContent = (loc.offline ? 'Offline demo data · ' : 'Last sync ') + now.toLocaleString();
+  }
+
+  /* ---------------- chat log ---------------- */
+  const chatLog = document.getElementById('chatLog');
+
+  function addMsg(role, html, meta){
+    const wrap = document.createElement('div');
+    wrap.className = 'msg ' + role;
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerHTML = html;
+    wrap.appendChild(bubble);
+    if(meta){
+      const m = document.createElement('div');
+      m.className = 'msg-meta';
+      m.textContent = meta;
+      wrap.appendChild(m);
+    }
+    chatLog.appendChild(wrap);
+    chatLog.scrollTop = chatLog.scrollHeight;
+    return bubble;
+  }
+
+  function addTyping(){
+    const wrap = document.createElement('div');
+    wrap.className = 'msg bot';
+    wrap.id = 'typingIndicator';
+    wrap.innerHTML = '<div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>';
+    chatLog.appendChild(wrap);
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }
+  function removeTyping(){
+    const t = document.getElementById('typingIndicator');
+    if(t) t.remove();
+  }
+
+  /* ---------------- query understanding (lightweight, client-side) ---------------- */
+  const KNOWN_CITIES = ['delhi','mumbai','chennai','kolkata','bengaluru','bangalore','hyderabad','pune','ahmedabad','jaipur','lucknow','kochi','cochin','shimla','patna','bhopal','guwahati','chandigarh','srinagar','goa','panaji','varanasi','indore','nagpur','surat','visakhapatnam','vizag','coimbatore','thiruvananthapuram','bhubaneswar','ranchi','raipur','dehradun','amritsar','agra','mysuru','mysore','puri','darjeeling'];
+
+  function extractCity(text){
+    const lower = text.toLowerCase();
+    for(const c of KNOWN_CITIES){
+      if(lower.includes(c)) return c.charAt(0).toUpperCase()+c.slice(1);
+    }
+    const m = lower.match(/\bin\s+([a-zA-Z\u0900-\u097F]+)/);
+    if(m) return m[1].charAt(0).toUpperCase()+m[1].slice(1);
+    const words = text.split(/\s+/).filter(w => /^[A-Z][a-zA-Z]+$/.test(w) && !['I','What','Is','Will','Should','How'].includes(w));
+    if(words.length) return words[words.length-1];
+    return null;
+  }
+
+  function classifyIntent(text){
+    const t = text.toLowerCase();
+    if(/(aqi|air quality|pollution|pm2\.5|pm 2\.5)/.test(t)) return 'aqi';
+    if(/(rain|barsat|baarish|precip|shower)/.test(t)) return 'rain';
+    if(/(wind|hawa|gust)/.test(t)) return 'wind';
+    if(/(humid|nami)/.test(t)) return 'humidity';
+    if(/(cyclone|storm surge|tsunami)/.test(t)) return 'cyclone';
+    if(/(lightning|thunder|damini)/.test(t)) return 'lightning';
+    if(/(fish|boat|sea|wave)/.test(t)) return 'marine';
+    if(/(temp|hot|cold|degree|garmi|thand)/.test(t)) return 'temp';
+    return 'general';
+  }
+
+  function fmtDay(iso){
+    return new Date(iso).toLocaleDateString(undefined,{weekday:'short', day:'numeric', month:'short'});
+  }
+
+  async function answerQuery(text){
+    const cityName = extractCity(text) || 'Delhi';
+    const intent = classifyIntent(text);
+
+    if(intent === 'cyclone' || intent === 'lightning'){
+      return {
+        html: `I don't have a live hazard feed wired up in this browser demo for <b>${cityName}</b>. In the production build, this is exactly where WeatherGPT would query IMD's cyclone e-atlas and the <b>Damini</b> lightning-alert network directly, and push a proactive push notification if ${cityName} falls inside a warning zone — rather than waiting for you to ask.`,
+        src: 'Design note · not live in this demo'
+      };
+    }
+
+    let loc;
+    try{
+      loc = await geocode(cityName);
+    }catch(err){
+      console.error('geocode failed hard:', err);
+      loc = fallbackLoc(cityName);
+    }
+    if(!loc){
+      return { html: `I couldn't find a location called <b>${cityName}</b>. Try a major Indian city name, like Mumbai, Chennai or Guwahati.`, src: null };
+    }
+    const weather = await fetchWeather(loc);
+    updateInstrumentPanel(loc, weather);
+
+    const c = weather.current;
+    const today = weather.daily;
+    const place = loc.name + (loc.admin ? ', ' + loc.admin : '');
+    const desc = (WMO_DESC[c.weather_code] || 'unsettled conditions').toLowerCase();
+    const sourceLabel = loc.offline
+      ? 'Offline demo dataset · live feed unreachable from this browser'
+      : 'Open-Meteo public forecast · demo data layer';
+
+    let html = '';
+    if(intent === 'rain'){
+      const p0 = today.precipitation_probability_max[0];
+      const p1 = today.precipitation_probability_max[1];
+      html = `In <b>${place}</b> right now it's <b>${desc}</b> at ${c.temperature_2m.toFixed(1)}°C. Rain chance today is <b>${p0}%</b>, rising to <b>${p1}%</b> tomorrow. `
+        + (p1 >= 60 ? `I'd keep an umbrella close.` : `Fairly low risk — should be a dry stretch.`);
+    } else if(intent === 'wind'){
+      html = `Wind in <b>${place}</b> is currently <b>${c.wind_speed_10m.toFixed(0)} km/h</b> from the ${dirLabel(c.wind_direction_10m)}. Conditions are ${desc}.`;
+    } else if(intent === 'humidity'){
+      html = `Relative humidity in <b>${place}</b> is <b>${c.relative_humidity_2m}%</b>, with a surface pressure of ${c.surface_pressure.toFixed(0)} hPa — ${desc}.`;
+    } else if(intent === 'temp'){
+      html = `<b>${place}</b> is at <b>${c.temperature_2m.toFixed(1)}°C</b> right now (feels like ${c.apparent_temperature.toFixed(1)}°C). Today's range is ${today.temperature_2m_min[0].toFixed(0)}–${today.temperature_2m_max[0].toFixed(0)}°C, and it's ${desc}.`;
+    } else if(intent === 'marine'){
+      html = `I only have general surface wind for <b>${place}</b> in this demo — currently ${c.wind_speed_10m.toFixed(0)} km/h from the ${dirLabel(c.wind_direction_10m)}. A production build would pull IMD's marine wind/wave advisory here and give you a direct go/no-go for small craft.`;
+    } else if(intent === 'aqi'){
+      const aqiResult = await fetchAQI(loc);
+      const aqiData = aqiResult.data;
+      if(aqiData && aqiData.current && aqiData.current.us_aqi != null){
+        const aqi = Math.round(aqiData.current.us_aqi);
+        const pm25 = aqiData.current.pm2_5;
+        let band = 'Good';
+        if(aqi>200) band='Very unhealthy'; else if(aqi>150) band='Unhealthy'; else if(aqi>100) band='Unhealthy for sensitive groups'; else if(aqi>50) band='Moderate';
+        html = `Air quality in <b>${place}</b> is <b>${aqi} US AQI</b> (${band.toLowerCase()}), with PM2.5 around ${pm25?.toFixed(1) ?? '—'} µg/m³. ${aqi>100 ? 'Consider a mask outdoors if you\'re sensitive to pollution.' : 'Should be fine for most outdoor activity.'}`;
+      } else {
+        html = `I couldn't pull an AQI reading for <b>${place}</b> right now — the public air-quality feed may not cover this exact spot yet.`;
+      }
+      return { html, src: aqiResult.offline ? 'Offline demo dataset · live feed unreachable' : 'Open-Meteo air-quality feed · demo data layer' };
+    } else {
+      html = `<b>${place}</b> right now: ${desc}, <b>${c.temperature_2m.toFixed(1)}°C</b> (feels ${c.apparent_temperature.toFixed(1)}°C), humidity ${c.relative_humidity_2m}%, wind ${c.wind_speed_10m.toFixed(0)} km/h ${dirLabel(c.wind_direction_10m)}. Rain chance today is ${today.precipitation_probability_max[0]}%.`;
+    }
+
+    return { html, src: sourceLabel };
+  }
+
+  /* ---------------- interaction ---------------- */
+  async function handleAsk(){
+    const input = document.getElementById('userInput');
+    const text = input.value.trim();
+    if(!text) return;
+    addMsg('user', escapeHtml(text));
+    input.value = '';
+    document.getElementById('sendBtn').disabled = true;
+    addTyping();
+    try{
+      const {html, src} = await answerQuery(text);
+      await new Promise(r=>setTimeout(r, 350));
+      removeTyping();
+      addMsg('bot', html + (src ? `<div class="src">${src}</div>` : ''));
+    }catch(err){
+      removeTyping();
+      addMsg('bot', `Something went wrong reaching the weather service. Please try again in a moment.`);
+      console.error(err);
+    }
+    document.getElementById('sendBtn').disabled = false;
+    input.focus();
+  }
+
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  document.getElementById('composer').addEventListener('submit', (e)=>{
+    e.preventDefault();
+    handleAsk();
+  });
+
+  /* ---------------- init ---------------- */
+  async function init(){
+    applyI18n();
+    addMsg('bot', STRINGS[lang].greet);
+    try{
+      const loc = await geocode('Delhi');
+      const weather = await fetchWeather(loc);
+      updateInstrumentPanel(loc, weather);
+      if(loc.offline){
+        addMsg('bot', lang==='hi'
+          ? 'ध्यान दें: इस ब्राउज़र से लाइव मौसम फ़ीड तक नहीं पहुंचा जा सका, इसलिए मैं फ़िलहाल ऑफ़लाइन डेमो डेटा दिखा रहा हूं। सवाल पूछना अभी भी पूरी तरह से काम करता है।'
+          : "Heads up: I couldn't reach the live weather feed from this browser, so I'm running on offline demo data for now. Asking questions still works fully — I'll switch back to live data automatically if the connection opens up.");
+      }
+    }catch(e){
+      console.error('init failed unexpectedly:', e);
+    }
+  }
+  init();
+
+})();
+</script>
+</body>
+</html>
