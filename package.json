@@ -1,0 +1,9 @@
+{
+  "name": "weathergpt",
+  "private": true,
+  "version": "1.0.0",
+  "description": "WeatherGPT — SIH26068 conversational weather assistant prototype",
+  "scripts": {
+    "start": "node --env-file=backend/.env backend/server.js"
+  }
+}

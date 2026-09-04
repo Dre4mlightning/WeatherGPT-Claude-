@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WeatherGPT — Ask the sky anything</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 15a5 5 0 0 1 1-9.9A6 6 0 0 1 17 8a4.5 4.5 0 0 1-.5 9H6a4 4 0 0 1-2-2Z" stroke="#0a1721" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div>
+      <div class="brand-name">WeatherGPT</div>
+      <div class="brand-tag">Conversational climate &amp; alert assistant</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="eyebrow"><span class="dot"></span> SIH26068 · Mission Mausam prototype</div>
+    <div class="lang-toggle" id="langToggle">
+      <button class="active" data-lang="en">EN</button>
+      <button data-lang="hi">हि</button>
+    </div>
+  </div>
+</header>
+
+<div class="ticker">
+  <div class="ticker-inner" id="tickerRow">
+    <div class="tick"><span class="k">Station</span><span class="v" id="tkCity">—</span></div>
+    <div class="tick"><span class="k">Temp</span><span class="v hot" id="tkTemp">— °C</span></div>
+    <div class="tick"><span class="k">Pressure</span><span class="v" id="tkPress">— hPa</span></div>
+    <div class="tick"><span class="k">Wind</span><span class="v" id="tkWind">—</span></div>
+    <div class="tick"><span class="k">Humidity</span><span class="v cool" id="tkHum">—%</span></div>
+    <div class="tick"><span class="k">Updated</span><span class="v" id="tkTime">—</span></div>
+  </div>
+</div>
+
+<div id="statusBanner" style="display:none;align-items:center;gap:10px;padding:10px clamp(20px,5vw,56px);background:rgba(255,182,72,0.1);border-bottom:1px solid rgba(255,182,72,0.3);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--amber);">
+  <span style="width:6px;height:6px;border-radius:50%;background:var(--amber);flex-shrink:0;"></span>
+  <span id="statusBannerText">Live data unavailable — showing offline demo data instead.</span>
+</div>
+
+<section class="hero">
+  <svg class="hero-isobars" viewBox="0 0 1200 260" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0,40 C 200,10 400,70 600,40 S 1000,10 1200,40" stroke="#49dcc9" stroke-opacity="0.18" stroke-width="1.5" fill="none"/>
+    <path d="M0,90 C 200,60 400,120 600,90 S 1000,60 1200,90" stroke="#49dcc9" stroke-opacity="0.14" stroke-width="1.5" fill="none"/>
+    <path d="M0,140 C 200,110 400,170 600,140 S 1000,110 1200,140" stroke="#ffb648" stroke-opacity="0.12" stroke-width="1.5" fill="none"/>
+    <path d="M0,190 C 200,160 400,220 600,190 S 1000,160 1200,190" stroke="#49dcc9" stroke-opacity="0.10" stroke-width="1.5" fill="none"/>
+    <path d="M0,235 C 200,205 400,260 600,235 S 1000,205 1200,235" stroke="#49dcc9" stroke-opacity="0.08" stroke-width="1.5" fill="none"/>
+  </svg>
+  <div class="hero-content">
+    <h1 data-i18n="heroTitle">Ask the sky <em>anything.</em></h1>
+    <p data-i18n="heroSub">One conversational layer over live forecasts, nowcasts and hazard alerts — in plain language, in your language, before the weather makes the decision for you.</p>
+    <div class="hero-stats">
+      <div class="hstat"><b>28+</b><span data-i18n="statLang">Languages planned</span></div>
+      <div class="hstat"><b>&lt;3s</b><span data-i18n="statResp">Alert response time</span></div>
+      <div class="hstat"><b>SMS/IVR</b><span data-i18n="statOffline">Low-bandwidth fallback</span></div>
+    </div>
+  </div>
+</section>
+
+<main class="app">
+  <div class="panel">
+    <div class="panel-head">
+      <h2 data-i18n="chatTitle">Ask WeatherGPT</h2>
+      <div class="status"><span class="dot"></span><span data-i18n="statusLive">Live data</span></div>
+    </div>
+    <div class="chat-log" id="chatLog"></div>
+    <div class="chips" id="chips"></div>
+    <form class="composer" id="composer">
+      <input id="userInput" type="text" autocomplete="off" data-i18n-placeholder="composerPlaceholder" placeholder="Try: will it rain in Kochi tomorrow?" />
+      <button type="submit" id="sendBtn" data-i18n="send">Ask</button>
+    </form>
+  </div>
+
+  <aside class="side">
+    <div class="card">
+      <h3 data-i18n="instrumentTitle">Live instrument panel</h3>
+      <div class="locrow">
+        <span class="city" id="sideCity">Delhi</span>
+        <span class="code" id="sideCoord">28.61°N 77.21°E</span>
+      </div>
+      <div class="dial-grid">
+        <div class="dial"><div class="lab" data-i18n="dTemp">Temperature</div><div class="val" id="dTemp">—</div></div>
+        <div class="dial"><div class="lab" data-i18n="dFeels">Feels like</div><div class="val" id="dFeels">—</div></div>
+        <div class="dial"><div class="lab" data-i18n="dHum">Humidity</div><div class="val" id="dHum">—</div></div>
+        <div class="dial"><div class="lab" data-i18n="dWind">Wind</div><div class="val" id="dWind">—</div></div>
+        <div class="dial wide"><div><div class="lab" data-i18n="dPress">Surface pressure</div><div class="val" id="dPress">—</div></div></div>
+      </div>
+      <div class="condition-row">
+        <svg id="condIcon" viewBox="0 0 48 48" fill="none"></svg>
+        <div>
+          <div class="desc" id="condDesc" data-i18n="loading">Reading instruments…</div>
+          <div class="sub" id="condSub">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card about-card">
+      <h3 data-i18n="aboutTitle">About this prototype</h3>
+      <p data-i18n="aboutP1"><b>WeatherGPT</b> is a SIH2026 concept build for PS SIH26068 (Ministry of Earth Sciences). This demo runs on open public weather data to show the conversational layer end-to-end.</p>
+      <p data-i18n="aboutP2">A production deployment would replace this data layer with live <b>IMD, Mausam, Meghdoot and Damini</b> feeds, plus an LLM grounded via retrieval so every figure it states is sourced and verifiable.</p>
+    </div>
+  </aside>
+</main>
+
+<footer>
+  <span>WeatherGPT — SIH26068 concept prototype · Not an official IMD/MoES product</span>
+  <span id="footTime">—</span>
+</footer>
+
+<script src="js/app.js" defer></script>
+</body>
+</html>
